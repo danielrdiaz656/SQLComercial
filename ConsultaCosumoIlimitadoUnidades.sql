@@ -135,6 +135,7 @@ SELECT DISTINCT
 
 FROM empresa e
 LEFT JOIN (
+/*Maxima Fecha de ilimitado*/
     SELECT 
         eevu.id_empresa_vencimiento,
         eevu.id_empresa,
@@ -143,15 +144,17 @@ LEFT JOIN (
         eevu.created_at AS ilimitadoDate,
         eevu.id_tipo_prueba
     FROM es_empresa_vencimiento_unidades eevu
-    WHERE eevu.created_at = (
+    WHERE eevu.created_at in (
         SELECT MAX(eevu1.created_at)
         FROM es_empresa_vencimiento_unidades eevu1
         WHERE eevu.id_empresa = eevu1.id_empresa
         AND eevu1.id_tipo_prueba IN (1, 3)
+        GROUP BY eevu1.id_tipo_prueba
     )
     ORDER BY eevu.id_empresa DESC
 ) a ON a.id_empresa = e.id_empresa
 LEFT JOIN (
+/*Maxima del ultimo paquete de unidades y cuantas unidades compro para ese paquete*/
     SELECT 
         et.id_empresa,
         et.concepto,
@@ -160,28 +163,34 @@ LEFT JOIN (
         et.created_at AS unidadesDate
     FROM es_transacciones et
     WHERE et.unidades > 1
-    AND et.created_at = (
+    AND et.created_at in (
         SELECT MAX(et2.created_at)
         FROM es_transacciones et2
         WHERE et2.id_empresa = et.id_empresa
         AND et2.unidades > 1
         AND et2.id_tipo_prueba IN (1, 3)
+        group by et2.id_tipo_prueba
     )
-    AND et.id_tipo_prueba IN (1, 3)
-) b ON b.id_empresa = e.id_empresa
+    AND et.id_tipo_prueba IN (1, 3) and et.id_empresa = 984
+) b ON b.id_empresa = e.id_empresa AND a.id_tipo_prueba = b.id_tipo_prueba
 LEFT JOIN (
     SELECT 
+ /*Suma de Unidades cosumidas */
+    
         SUM(A.unidades) AS SUM_PADRE,
         A.id_empresa,
         A.id_tipo_prueba,
         e.id_empresa_padre
     FROM es_transacciones A
     INNER JOIN empresa e ON A.id_empresa = e.id_empresa
-    WHERE A.id_tipo_prueba IN (1, 3)
+    WHERE A.id_tipo_prueba IN (1, 3) #and e.id_empresa = 984
     GROUP BY A.id_empresa, A.id_tipo_prueba, e.id_empresa_padre
-) unidades_padre ON unidades_padre.id_empresa = b.id_empresa AND b.id_tipo_prueba = unidades_padre.id_tipo_prueba
+) unidades_padre ON unidades_padre.id_empresa = b.id_empresa 
+                 AND b.id_tipo_prueba = unidades_padre.id_tipo_prueba
+         
 LEFT JOIN (
     SELECT 
+ /*consumo  de ilimitado */    
         A.id_empresa,
         A.id_tipo_prueba,
         e.id_empresa_padre,
@@ -199,7 +208,10 @@ LEFT JOIN (
     WHERE A.created_at >= mf2.max_created_at
     AND unidades < 0
     GROUP BY A.id_empresa, A.id_tipo_prueba, e.id_empresa_padre
-) ilimitado_consumo ON ilimitado_consumo.id_empresa = a.id_empresa AND a.id_tipo_prueba = ilimitado_consumo.id_tipo_prueba
+) ilimitado_consumo ON ilimitado_consumo.id_empresa = a.id_empresa 
+                    AND a.id_tipo_prueba = ilimitado_consumo.id_tipo_prueba 
+                    
 WHERE e.id_empresa_padre = 1
 ORDER BY e.id_empresa DESC
 ) a
+where a.id_empresa = 984
