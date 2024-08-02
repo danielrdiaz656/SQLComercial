@@ -214,4 +214,4 @@ LEFT JOIN (
 WHERE e.id_empresa_padre = 1
 ORDER BY e.id_empresa DESC
 ) a
-where a.id_empresa = 984
+## where a.id_empresa = 984
